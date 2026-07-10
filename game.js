@@ -778,6 +778,7 @@ document.getElementById('pauseExitBtn').addEventListener('click', ()=>{
 function togglePause(){
   if(!running) return;
   paused = !paused;
+  console.log('Pause toggled. paused =', paused);
   if(paused){
     try{ if(audioCtx && audioCtx.state === 'running') audioCtx.suspend(); } catch(e){ /* ignore */ }
     startPanelBody.style.display = 'none';
