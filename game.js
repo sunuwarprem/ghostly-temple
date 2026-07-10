@@ -44,6 +44,24 @@ function escapeHtml(str){
   return div.innerHTML;
 }
 
+// Removing a mesh from the scene does NOT free its GPU memory by itself.
+// Since this game spawns obstacles/coins/particles continuously for an
+// unbounded run, skipping disposal here was leaking GPU memory over time
+// until the WebGL context crashed (showing as a black screen). This walks
+// the object (and any children, for groups like the jumbie/gap models) and
+// frees geometry + material before removal.
+function removeFromScene(obj){
+  if(!obj) return;
+  obj.traverse(child=>{
+    if(child.geometry) child.geometry.dispose();
+    if(child.material){
+      if(Array.isArray(child.material)) child.material.forEach(m=>m.dispose());
+      else child.material.dispose();
+    }
+  });
+  scene.remove(obj);
+}
+
 // ---------- sound effects (synthesized, no audio files needed) ----------
 const SOUND_KEY = 'ruinRunner.soundOn';
 let soundOn = true;
@@ -96,11 +114,81 @@ function sfxVictory(){
   playTone(784, 0.3, 'sine', 0.24, 0.3);
 }
 
+// low ghostly ambient drone, loops for the whole run
+let ambientNodes = null;
+function startAmbient(){
+  if(!soundOn || ambientNodes) return;
+  const ctx = ensureAudio();
+  if(!ctx) return;
+
+  const gain = ctx.createGain();
+  gain.gain.value = 0.05;
+  gain.connect(ctx.destination);
+
+  const osc1 = ctx.createOscillator();
+  osc1.type = 'sine'; osc1.frequency.value = 55;
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sine'; osc2.frequency.value = 58; // slight detune for an eerie beating effect
+  osc1.connect(gain); osc2.connect(gain);
+
+  // slow LFO makes the drone swell and fade like breathing
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 0.07;
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 0.03;
+  lfo.connect(lfoGain);
+  lfoGain.connect(gain.gain);
+
+  osc1.start(); osc2.start(); lfo.start();
+  ambientNodes = { osc1, osc2, lfo, gain };
+}
+function stopAmbient(){
+  if(!ambientNodes) return;
+  try{
+    ambientNodes.osc1.stop(); ambientNodes.osc2.stop(); ambientNodes.lfo.stop();
+  } catch(e){ /* already stopped */ }
+  ambientNodes = null;
+}
+
+// ---------- crash / context-loss recovery ----------
+// If anything goes seriously wrong (a runtime error, or the browser reclaiming
+// the WebGL context — common on mobile when the tab is backgrounded or the
+// device is low on GPU memory), show a clear "reload" prompt instead of
+// silently leaving a black screen with no explanation.
+let fatalErrorShown = false;
+function showFatalError(message){
+  if(fatalErrorShown) return;
+  fatalErrorShown = true;
+  running = false;
+  try{ stopAmbient(); }catch(e){ /* ignore */ }
+  const el = document.getElementById('fatalOverlay');
+  const msgEl = document.getElementById('fatalMessage');
+  if(msgEl) msgEl.textContent = message;
+  if(el) el.style.display = 'flex';
+}
+window.addEventListener('error', (e)=>{
+  console.error('Game error:', e.error || e.message);
+  showFatalError('Something interrupted the game. Tap below to reload and keep going.');
+});
+window.addEventListener('unhandledrejection', (e)=>{
+  console.error('Game promise error:', e.reason);
+  showFatalError('Something interrupted the game. Tap below to reload and keep going.');
+});
+
 // ---------- basic setup ----------
 const canvas = document.getElementById('game');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouchDevice ? 1.75 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+
+canvas.addEventListener('webglcontextlost', (e)=>{
+  e.preventDefault(); // signal we intend to try to recover
+  showFatalError('The graphics connection was lost (this can happen if the tab was backgrounded for a while). Tap below to reload.');
+}, false);
+canvas.addEventListener('webglcontextrestored', ()=>{
+  // rebuilding the whole scene in place is fragile; a clean reload is the reliable fix
+  window.location.reload();
+}, false);
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x0c0a08, 14, 60);
@@ -220,6 +308,50 @@ const SEGMENTS_VISIBLE = 8;
 let segments = [];
 let flameMeshes = [];
 
+// decorative dead tree, purely visual, planted beyond the pillars
+function createDeadTree(x, z){
+  const tree = new THREE.Group();
+  const woodMat = new THREE.MeshStandardMaterial({ color:0x241d17, roughness:.95 });
+  const trunkH = 2.4 + Math.random()*1.8;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.22, trunkH, 6), woodMat);
+  trunk.position.y = trunkH/2;
+  tree.add(trunk);
+
+  const branchCount = 3 + Math.floor(Math.random()*3);
+  for(let i=0;i<branchCount;i++){
+    const branchLen = 0.6 + Math.random()*0.8;
+    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.07, branchLen, 5), woodMat);
+    const angle = (Math.random()-0.5)*1.4;
+    branch.position.y = trunkH*0.55 + Math.random()*trunkH*0.4;
+    branch.position.x = Math.sin(angle)*branchLen*0.4;
+    branch.rotation.z = angle;
+    branch.rotation.x = (Math.random()-0.5)*0.8;
+    tree.add(branch);
+  }
+  tree.position.set(x, 0, z);
+  return tree;
+}
+
+// decorative jack-o-lantern, purely visual
+function createPumpkin(x, z){
+  const p = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.SphereGeometry(0.26, 8, 6),
+    new THREE.MeshStandardMaterial({ color:0xd9611a, roughness:.6, emissive:0x3d1a02, emissiveIntensity:.7 })
+  );
+  body.scale.y = 0.82;
+  body.position.y = 0.26;
+  p.add(body);
+  const stem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.035, 0.06, 0.16, 5),
+    new THREE.MeshStandardMaterial({ color:0x3c5a2e, roughness:.8 })
+  );
+  stem.position.y = 0.52;
+  p.add(stem);
+  p.position.set(x, 0, z);
+  return p;
+}
+
 function makeGroundSegment(zPos){
   const g = new THREE.Group();
   const floorMat = new THREE.MeshStandardMaterial({ color:0x3a3226, roughness:.95 });
@@ -244,6 +376,17 @@ function makeGroundSegment(zPos){
     g.add(flame);
     flameMeshes.push(flame);
   }
+
+  // scattered atmosphere: dead trees further out, pumpkins closer to the path
+  if(Math.random() < 0.55){
+    const side = Math.random() < 0.5 ? -1 : 1;
+    g.add(createDeadTree(side*(6.4 + Math.random()*2.4), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
+  }
+  if(Math.random() < 0.45){
+    const side = Math.random() < 0.5 ? -1 : 1;
+    g.add(createPumpkin(side*(4.9 + Math.random()*1.1), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
+  }
+
   trackGroup.add(g);
   return g;
 }
@@ -392,8 +535,10 @@ const MAX_LIVES = 3;
 let lives = MAX_LIVES;
 let invulnTime = 0;
 
-const FIND_DISTANCE = 900; // distance at which Pooza is found
+const FIND_DISTANCE = 258; // partway through level 2
 let foundPrincess = false;
+let celebrating = false;
+let celebrateTimer = 0;
 
 function computeLevel(dist){
   return Math.min(MAX_LEVEL, 1 + Math.floor(dist / LEVEL_DISTANCE));
@@ -474,6 +619,7 @@ const endPanelBody = document.getElementById('endPanelBody');
 const nameInput = document.getElementById('nameInput');
 const levelUpBanner = document.getElementById('levelUpBanner');
 const levelUpText = document.getElementById('levelUpText');
+const loveBanner = document.getElementById('loveBanner');
 const countdownNumber = document.getElementById('countdownNumber');
 
 nameInput.value = (function(){
@@ -496,7 +642,8 @@ muteBtn.addEventListener('click', ()=>{
   soundOn = !soundOn;
   try{ localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch(e){ /* ignore */ }
   updateMuteBtn();
-  if(soundOn){ ensureAudio(); sfxCoin(); }
+  if(soundOn){ ensureAudio(); sfxCoin(); if(running) startAmbient(); }
+  else { stopAmbient(); }
 });
 
 let levelUpTimeout = null;
@@ -505,6 +652,13 @@ function flashLevelUp(lvl){
   levelUpBanner.classList.add('show');
   clearTimeout(levelUpTimeout);
   levelUpTimeout = setTimeout(()=> levelUpBanner.classList.remove('show'), 1400);
+}
+
+let loveBannerTimeout = null;
+function showLoveBanner(){
+  loveBanner.classList.add('show');
+  clearTimeout(loveBannerTimeout);
+  loveBannerTimeout = setTimeout(()=> loveBanner.classList.remove('show'), 1900);
 }
 
 function beginSequence(){
@@ -529,9 +683,9 @@ function beginSequence(){
 }
 
 function startGame(){
-  obstacles.forEach(o=>scene.remove(o.mesh));
-  coins.forEach(c=>scene.remove(c.mesh));
-  particles.forEach(p=>scene.remove(p.mesh));
+  obstacles.forEach(o=>removeFromScene(o.mesh));
+  coins.forEach(c=>removeFromScene(c.mesh));
+  particles.forEach(p=>removeFromScene(p.mesh));
   obstacles = []; coins = []; particles = [];
 
   distance = 0; coinCount = 0; speed = 0.20; level = 1;
@@ -545,10 +699,14 @@ function startGame(){
   lives = MAX_LIVES;
   invulnTime = 0;
   foundPrincess = false;
+  celebrating = false;
+  celebrateTimer = 0;
   player.visible = true;
   camera.position.x = CAM_BASE.x; camera.position.y = CAM_BASE.y;
 
   try{ localStorage.setItem(NAME_KEY, nameInput.value.trim()); } catch(e){ /* ignore */ }
+
+  startAmbient();
 
   running = true;
   overlay.classList.add('hidden');
@@ -578,6 +736,7 @@ function finishRun(victory){
   running = false;
   if(!victory) shakeTime = 18;
   if(victory) sfxVictory(); else sfxGameOver();
+  stopAmbient();
 
   const finalScore = computeScore();
   const playerName = (nameInput.value || '').trim() || 'Explorer';
@@ -634,7 +793,7 @@ function checkCollisions(){
     if(Math.abs(c.z - pz) < 0.6 && c.lane === laneIndex){
       spawnCoinBurst(c.mesh.position);
       sfxCoin();
-      scene.remove(c.mesh);
+      removeFromScene(c.mesh);
       coins.splice(i,1);
       coinCount++;
     }
@@ -645,128 +804,142 @@ function checkCollisions(){
 let frameCount = 0;
 function animate(){
   requestAnimationFrame(animate);
-  frameCount++;
+  if(fatalErrorShown) return;
 
-  if(running){
-    const prevLevel = level;
+  try{
+    frameCount++;
+
+    if(running){
+      const prevLevel = level;
     level = computeLevel(distance);
     speed = computeSpeed(distance, level);
     if(level !== prevLevel) flashLevelUp(level);
 
-    distance += speed * 0.6;
+    if(celebrating){
+      celebrateTimer--;
+      if(celebrateTimer <= 0) celebrating = false;
+    } else {
+      distance += speed * 0.6;
 
-    if(!foundPrincess && distance >= FIND_DISTANCE){
-      foundPrincess = true;
-      spawnCoinBurst(player.position);
-      finishRun(true);
+      if(!foundPrincess && distance >= FIND_DISTANCE){
+        foundPrincess = true;
+        celebrating = true;
+        celebrateTimer = 120; // ~2 seconds, run pauses right here then resumes
+        spawnCoinBurst(player.position);
+        sfxVictory();
+        showLoveBanner();
+      }
     }
 
-    const dz = speed;
-    obstacles.forEach(o=>{
-      o.z += dz; o.mesh.position.z = o.z;
-      if(o.type === 'jumbie'){
-        o.mesh.position.y = Math.sin(frameCount*0.08 + o.bobSeed) * 0.08;
-        o.mesh.position.x = o.baseX + Math.sin(frameCount*0.025 + o.bobSeed) * 0.22;
-        o.mesh.rotation.y += 0.015;
+    if(!celebrating){
+      const dz = speed;
+      obstacles.forEach(o=>{
+        o.z += dz; o.mesh.position.z = o.z;
+        if(o.type === 'jumbie'){
+          o.mesh.position.y = Math.sin(frameCount*0.08 + o.bobSeed) * 0.08;
+          o.mesh.position.x = o.baseX + Math.sin(frameCount*0.025 + o.bobSeed) * 0.22;
+          o.mesh.rotation.y += 0.015;
+        }
+      });
+      coins.forEach(c=>{ c.z += dz; c.mesh.position.z = c.z; c.mesh.rotation.z += 0.12; });
+      segments.forEach(s=>{ s.z += dz; s.mesh.position.z = s.z; });
+
+      segments.forEach(s=>{
+        if(s.z > 14){
+          s.z -= SEGMENT_LEN * SEGMENTS_VISIBLE;
+          s.mesh.position.z = s.z;
+        }
+      });
+
+      obstacles = obstacles.filter(o=>{
+        if(o.z > 14){ removeFromScene(o.mesh); return false; }
+        return true;
+      });
+      coins = coins.filter(c=>{
+        if(c.z > 14){ removeFromScene(c.mesh); return false; }
+        return true;
+      });
+
+      // coin/spark particle update
+      particles = particles.filter(p=>{
+        p.life--;
+        p.mesh.position.x += p.vx;
+        p.mesh.position.y += p.vy;
+        p.mesh.position.z += p.vz;
+        p.vy -= 0.006;
+        p.mesh.material.opacity = Math.max(0, p.life / p.maxLife);
+        if(p.life <= 0){ removeFromScene(p.mesh); return false; }
+        return true;
+      });
+
+      nextSpawnZ += dz;
+      const spacingLevel = level <= 5 ? 1 : (level - 4);
+      while(nextSpawnZ > -50){
+        spawnRowAt(nextSpawnZ - 60, level);
+        nextSpawnZ -= Math.max(4.2, 6 - spacingLevel*0.15);
       }
-    });
-    coins.forEach(c=>{ c.z += dz; c.mesh.position.z = c.z; c.mesh.rotation.z += 0.12; });
-    segments.forEach(s=>{ s.z += dz; s.mesh.position.z = s.z; });
 
-    segments.forEach(s=>{
-      if(s.z > 14){
-        s.z -= SEGMENT_LEN * SEGMENTS_VISIBLE;
-        s.mesh.position.z = s.z;
+      player.position.x += (targetX - player.position.x) * 0.22;
+
+      if(isJumping){
+        velY += GRAVITY;
+        playerY += velY;
+        if(playerY <= 0){
+          playerY = 0; isJumping = false; velY = 0;
+        }
       }
-    });
 
-    obstacles = obstacles.filter(o=>{
-      if(o.z > 14){ scene.remove(o.mesh); return false; }
-      return true;
-    });
-    coins = coins.filter(c=>{
-      if(c.z > 14){ scene.remove(c.mesh); return false; }
-      return true;
-    });
+      if(isSliding){
+        slideTimer--;
+        if(slideTimer <= 0) isSliding = false;
+      }
 
-    // coin/spark particle update
-    particles = particles.filter(p=>{
-      p.life--;
-      p.mesh.position.x += p.vx;
-      p.mesh.position.y += p.vy;
-      p.mesh.position.z += p.vz;
-      p.vy -= 0.006;
-      p.mesh.material.opacity = Math.max(0, p.life / p.maxLife);
-      if(p.life <= 0){ scene.remove(p.mesh); return false; }
-      return true;
-    });
+      player.position.y = playerY;
 
-    // torch flicker
+      const targetTiltX = isSliding ? 1.0 : 0;
+      player.rotation.x += (targetTiltX - player.rotation.x) * 0.35;
+
+      if(isJumping){
+        leftLeg.rotation.x  += (-0.9 - leftLeg.rotation.x) * 0.3;
+        rightLeg.rotation.x += (-0.6 - rightLeg.rotation.x) * 0.3;
+        leftArm.rotation.x  += (-0.4 - leftArm.rotation.x) * 0.3;
+        rightArm.rotation.x += ( 0.7 - rightArm.rotation.x) * 0.3;
+      } else if(isSliding){
+        leftLeg.rotation.x  += (0.3 - leftLeg.rotation.x) * 0.3;
+        rightLeg.rotation.x += (0.3 - rightLeg.rotation.x) * 0.3;
+        leftArm.rotation.x  += (-0.6 - leftArm.rotation.x) * 0.3;
+        rightArm.rotation.x += (-0.6 - rightArm.rotation.x) * 0.3;
+      } else {
+        const swing = Math.sin(distance * 9) * 0.75;
+        leftLeg.rotation.x  += (swing - leftLeg.rotation.x) * 0.4;
+        rightLeg.rotation.x += (-swing - rightLeg.rotation.x) * 0.4;
+        leftArm.rotation.x  += (-swing*0.8 - leftArm.rotation.x) * 0.4;
+        rightArm.rotation.x += ( swing*0.8 - rightArm.rotation.x) * 0.4;
+      }
+
+      player.rotation.z = Math.sin(distance*0.4) * 0.03;
+
+      torchLight.position.z = player.position.z + 1;
+
+      // invulnerability window after losing a life: skip collisions, flicker the model
+      if(invulnTime > 0){
+        invulnTime--;
+        player.visible = Math.floor(invulnTime / 4) % 2 === 0;
+      } else {
+        player.visible = true;
+      }
+
+      if(running){ // finishRun() may have fired above on this same frame
+        checkCollisions();
+      }
+    }
+
+    // torch flicker keeps going even during the celebration pause
     if(frameCount % 4 === 0){
       flameMeshes.forEach(f=>{ f.material.emissiveIntensity = 0.9 + Math.random()*0.7; });
     }
 
-    nextSpawnZ += dz;
-    const spacingLevel = level <= 5 ? 1 : (level - 4);
-    while(nextSpawnZ > -50){
-      spawnRowAt(nextSpawnZ - 60, level);
-      nextSpawnZ -= Math.max(4.2, 6 - spacingLevel*0.15);
-    }
-
-    player.position.x += (targetX - player.position.x) * 0.22;
-
-    if(isJumping){
-      velY += GRAVITY;
-      playerY += velY;
-      if(playerY <= 0){
-        playerY = 0; isJumping = false; velY = 0;
-      }
-    }
-
-    if(isSliding){
-      slideTimer--;
-      if(slideTimer <= 0) isSliding = false;
-    }
-
-    player.position.y = playerY;
-
-    const targetTiltX = isSliding ? 1.0 : 0;
-    player.rotation.x += (targetTiltX - player.rotation.x) * 0.35;
-
-    if(isJumping){
-      leftLeg.rotation.x  += (-0.9 - leftLeg.rotation.x) * 0.3;
-      rightLeg.rotation.x += (-0.6 - rightLeg.rotation.x) * 0.3;
-      leftArm.rotation.x  += (-0.4 - leftArm.rotation.x) * 0.3;
-      rightArm.rotation.x += ( 0.7 - rightArm.rotation.x) * 0.3;
-    } else if(isSliding){
-      leftLeg.rotation.x  += (0.3 - leftLeg.rotation.x) * 0.3;
-      rightLeg.rotation.x += (0.3 - rightLeg.rotation.x) * 0.3;
-      leftArm.rotation.x  += (-0.6 - leftArm.rotation.x) * 0.3;
-      rightArm.rotation.x += (-0.6 - rightArm.rotation.x) * 0.3;
-    } else {
-      const swing = Math.sin(distance * 9) * 0.75;
-      leftLeg.rotation.x  += (swing - leftLeg.rotation.x) * 0.4;
-      rightLeg.rotation.x += (-swing - rightLeg.rotation.x) * 0.4;
-      leftArm.rotation.x  += (-swing*0.8 - leftArm.rotation.x) * 0.4;
-      rightArm.rotation.x += ( swing*0.8 - rightArm.rotation.x) * 0.4;
-    }
-
-    player.rotation.z = Math.sin(distance*0.4) * 0.03;
-
-    torchLight.position.z = player.position.z + 1;
-
-    // invulnerability window after losing a life: skip collisions, flicker the model
-    if(invulnTime > 0){
-      invulnTime--;
-      player.visible = Math.floor(invulnTime / 4) % 2 === 0;
-    } else {
-      player.visible = true;
-    }
-
-    if(running){ // finishRun(true) may have fired above on this same frame
-      checkCollisions();
-      updateHUD();
-    }
+    updateHUD();
   }
 
   // screen shake (runs even after game over, decaying out)
@@ -780,6 +953,10 @@ function animate(){
   }
 
   renderer.render(scene, camera);
+  } catch(err){
+    console.error('Frame error:', err);
+    showFatalError('Something interrupted the game. Tap below to reload and keep going.');
+  }
 }
 
 animate();

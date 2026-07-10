@@ -79,6 +79,21 @@ html,body{
   transform:translate(-50%,0);
 }
 
+#loveBanner{
+  position:fixed; top:42%; left:50%; transform:translate(-50%,10px);
+  z-index:13; pointer-events:none;
+  font-family:'Georgia', serif; font-weight:bold;
+  font-size:52px; letter-spacing:3px;
+  color:var(--blood);
+  text-shadow:0 0 24px rgba(163,49,42,.85), 0 0 50px rgba(0,0,0,.9);
+  opacity:0;
+  transition:opacity .4s ease, transform .4s ease;
+}
+#loveBanner.show{
+  opacity:1;
+  transform:translate(-50%,0);
+}
+
 /* ---------- keyboard hint (desktop only) ---------- */
 #controls-hint{
   position:fixed; bottom:14px; left:50%; transform:translateX(-50%);
@@ -242,6 +257,25 @@ html,body{
 .leaderboard-list li .lb-name{ flex:1; padding:0 8px; color:var(--parchment); }
 .leaderboard-list li .lb-score{ color:var(--gold-bright); font-weight:bold; }
 .leaderboard-empty{ opacity:.5; font-size:13px; font-style:italic; }
+
+/* ---------- fatal error / crash recovery ---------- */
+.fatal-overlay{
+  position:fixed; inset:0; z-index:999;
+  background:#0a0806;
+  display:flex; align-items:center; justify-content:center;
+  font-family:Georgia, 'Times New Roman', serif;
+  padding:24px;
+}
+.fatal-box{
+  text-align:center; max-width:360px;
+  color:#e9dcc0;
+}
+.fatal-box p{ font-size:15px; line-height:1.6; margin-bottom:20px; opacity:.9; }
+#fatalReloadBtn{
+  font-family:inherit; font-size:14px; letter-spacing:1px; text-transform:uppercase;
+  background:#e8c65f; color:#221a0f; border:none;
+  padding:12px 28px; border-radius:5px; font-weight:bold; cursor:pointer;
+}
 
 /* ---------- small-screen tuning ---------- */
 @media (max-width: 480px){
