@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Find Princes Presna</title>
+<title>Ghost Temple Run : Find Presna</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -27,6 +27,7 @@
     <div class="hud-label">Relics</div>
     <div class="hud-value" id="coinVal">0</div>
   </div>
+  <button id="pauseBtn" class="mute-btn" aria-label="Pause">&#10074;&#10074;</button>
   <button id="muteBtn" class="mute-btn" aria-label="Toggle sound">&#128266;</button>
 </div>
 
@@ -48,7 +49,7 @@
 
 <div id="overlay">
   <div class="panel">
-    <h1>presna is waiting there</h1>
+    <h1>Presna: find her</h1>
     <div class="sub" id="panelSub">a dark ghostly temple hides Princess Presna</div>
     <div class="divider"></div>
 
@@ -69,6 +70,17 @@
     <div id="countdownPanelBody" style="display:none;">
       <div class="countdown-message">Presna is waiting for you, go run</div>
       <div class="countdown-number" id="countdownNumber">3</div>
+    </div>
+
+    <!-- pause screen -->
+    <div id="pausePanelBody" style="display:none;">
+      <div class="result-heading">Paused</div>
+      <div class="result-sub">Catch your breath in the ruins.</div>
+      <div class="btn-row">
+        <button id="resumeBtn">Resume</button>
+        <button id="pauseExitBtn" class="btn-secondary">Exit</button>
+      </div>
+      <button id="pauseRestartBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Restart Run</button>
     </div>
 
     <!-- game over / victory screen -->

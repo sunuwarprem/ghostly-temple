@@ -99,6 +99,13 @@ function sfxCoin(){
   playTone(880, 0.12, 'sine', 0.22, 0);
   playTone(1320, 0.12, 'sine', 0.14, 0.05);
 }
+function sfxLifeUp(){
+  playTone(440, 0.14, 'triangle', 0.22, 0);
+  playTone(660, 0.2, 'triangle', 0.2, 0.1);
+}
+function sfxFootstep(sign){
+  playTone(sign > 0 ? 95 : 80, 0.06, 'square', 0.06, 0);
+}
 function sfxHit(){
   playTone(150, 0.22, 'sawtooth', 0.28, 0);
   playTone(90, 0.28, 'square', 0.18, 0.05);
@@ -191,8 +198,8 @@ canvas.addEventListener('webglcontextrestored', ()=>{
 }, false);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x0c0a08, 14, 60);
-scene.background = new THREE.Color(0x0c0a08);
+scene.fog = new THREE.Fog(0x1c1712, 18, 64);
+scene.background = new THREE.Color(0x1c1712);
 
 function getFov(){
   const aspect = window.innerWidth / window.innerHeight;
@@ -212,13 +219,16 @@ window.addEventListener('resize', ()=>{
 });
 
 // ---------- lighting ----------
-scene.add(new THREE.AmbientLight(0x554433, 1.1));
-const torchLight = new THREE.PointLight(0xff9a3d, 2, 20);
+scene.add(new THREE.AmbientLight(0x8a7a60, 1.7));
+const torchLight = new THREE.PointLight(0xff9a3d, 2.4, 24);
 torchLight.position.set(0, 4, 4);
 scene.add(torchLight);
-const moonLight = new THREE.DirectionalLight(0x8899cc, 0.5);
+const moonLight = new THREE.DirectionalLight(0x9db0d8, 0.85);
 moonLight.position.set(-5, 10, -10);
 scene.add(moonLight);
+const fillLight = new THREE.DirectionalLight(0xffe0b0, 0.35);
+fillLight.position.set(4, 6, 8);
+scene.add(fillLight);
 
 // ---------- starfield backdrop ----------
 (function createStarfield(){
@@ -352,9 +362,24 @@ function createPumpkin(x, z){
   return p;
 }
 
+// decorative mossy bush, purely visual, softens the stone/dead-tree palette
+function createBush(x, z){
+  const bush = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color:0x4d6b3f, roughness:.9 });
+  const clumps = 3 + Math.floor(Math.random()*2);
+  for(let i=0;i<clumps;i++){
+    const r = 0.16 + Math.random()*0.14;
+    const clump = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), mat);
+    clump.position.set((Math.random()-0.5)*0.32, r*0.85, (Math.random()-0.5)*0.32);
+    bush.add(clump);
+  }
+  bush.position.set(x, 0, z);
+  return bush;
+}
+
 function makeGroundSegment(zPos){
   const g = new THREE.Group();
-  const floorMat = new THREE.MeshStandardMaterial({ color:0x3a3226, roughness:.95 });
+  const floorMat = new THREE.MeshStandardMaterial({ color:0x4a4030, roughness:.95 });
   const floor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.4, SEGMENT_LEN), floorMat);
   floor.position.set(0, -0.2, zPos);
   g.add(floor);
@@ -362,7 +387,7 @@ function makeGroundSegment(zPos){
   for(const side of [-1,1]){
     const pillar = new THREE.Mesh(
       new THREE.BoxGeometry(0.6, 4.2, SEGMENT_LEN),
-      new THREE.MeshStandardMaterial({ color:0x2a241b, roughness:.9 })
+      new THREE.MeshStandardMaterial({ color:0x3a3226, roughness:.9 })
     );
     pillar.position.set(side*4.3, 1.9, zPos);
     g.add(pillar);
@@ -375,9 +400,20 @@ function makeGroundSegment(zPos){
     flame.position.set(side*4.3, 3.6, zPos - SEGMENT_LEN/2 + 1);
     g.add(flame);
     flameMeshes.push(flame);
+
+    // patch of moss growing on the pillar stone
+    if(Math.random() < 0.6){
+      const moss = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(0.24, 0),
+        new THREE.MeshStandardMaterial({ color:0x445c37, roughness:1 })
+      );
+      moss.scale.set(1, 0.5, 0.6);
+      moss.position.set(side*(4.3 - side*0.32), 0.7 + Math.random()*1.6, zPos + (Math.random()-0.5)*4);
+      g.add(moss);
+    }
   }
 
-  // scattered atmosphere: dead trees further out, pumpkins closer to the path
+  // scattered atmosphere: dead trees further out, pumpkins and bushes closer to the path
   if(Math.random() < 0.55){
     const side = Math.random() < 0.5 ? -1 : 1;
     g.add(createDeadTree(side*(6.4 + Math.random()*2.4), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
@@ -385,6 +421,10 @@ function makeGroundSegment(zPos){
   if(Math.random() < 0.45){
     const side = Math.random() < 0.5 ? -1 : 1;
     g.add(createPumpkin(side*(4.9 + Math.random()*1.1), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
+  }
+  if(Math.random() < 0.5){
+    const side = Math.random() < 0.5 ? -1 : 1;
+    g.add(createBush(side*(4.6 + Math.random()*1.3), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
   }
 
   trackGroup.add(g);
@@ -419,10 +459,58 @@ function createJumbieMesh(){
   return g;
 }
 
+// Princess Pooza's model — appears in the scene for the reunion moment
+function createPoozaMesh(){
+  const g = new THREE.Group();
+  const skin  = new THREE.MeshStandardMaterial({ color:0xe8c39a, roughness:.6 });
+  const dress = new THREE.MeshStandardMaterial({ color:0xd6488a, roughness:.55 });
+  const hairMat  = new THREE.MeshStandardMaterial({ color:0x2a1810, roughness:.8 });
+  const crownMat = new THREE.MeshStandardMaterial({ color:0xffd54a, emissive:0x553d00, emissiveIntensity:.6, roughness:.3, metalness:.7 });
+
+  const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.48, 1.25, 10), dress);
+  skirt.position.y = 0.75;
+  g.add(skirt);
+
+  const bodice = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.5, 0.26), dress);
+  bodice.position.y = 1.35;
+  g.add(bodice);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), skin);
+  head.position.y = 1.85;
+  g.add(head);
+
+  const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.235, 12, 12, 0, Math.PI*2, 0, Math.PI*0.6), hairMat);
+  hairTop.position.y = 1.87;
+  g.add(hairTop);
+  const hairFlow = new THREE.Mesh(new THREE.ConeGeometry(0.19, 0.65, 8), hairMat);
+  hairFlow.position.set(0, 1.5, -0.1);
+  hairFlow.rotation.x = Math.PI;
+  g.add(hairFlow);
+
+  const crown = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.032, 6, 12), crownMat);
+  crown.position.y = 2.02;
+  crown.rotation.x = Math.PI/2;
+  g.add(crown);
+
+  const armGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.48, 6);
+  const armL = new THREE.Mesh(armGeo, skin);
+  armL.position.set(-0.3, 1.35, 0.05);
+  armL.rotation.z = 0.55;
+  g.add(armL);
+  const armR = armL.clone();
+  armR.position.x = 0.3;
+  armR.rotation.z = -0.55;
+  g.add(armR);
+
+  return g;
+}
+
 // ---------- obstacles & coins ----------
 let obstacles = [];
 let coins = [];
 let particles = [];
+let lifePickups = [];
+const LIFE_CAP = 5;
 
 function pickObstacleType(level){
   const types = ['barrier','beam','gap'];
@@ -503,11 +591,24 @@ function spawnRowAt(z, level){
     scene.add(coinMesh);
     coins.push({ mesh: coinMesh, lane: coinLane, z: z-1.2 });
   }
+
+  // rare extra-life crystal, a little less common the closer you are to the cap
+  const lifeChance = lives >= LIFE_CAP ? 0 : 0.03;
+  if(Math.random() < lifeChance){
+    const lifeLane = Math.floor(Math.random()*3);
+    const lifeMesh = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.26, 0),
+      new THREE.MeshStandardMaterial({ color:0xff4d4d, emissive:0x6a0000, emissiveIntensity:.9, roughness:.3, metalness:.4 })
+    );
+    lifeMesh.position.set(LANE_X[lifeLane], 1.1, z - 3.4);
+    scene.add(lifeMesh);
+    lifePickups.push({ mesh: lifeMesh, lane: lifeLane, z: z-3.4, bobSeed: Math.random()*10 });
+  }
 }
 
-function spawnCoinBurst(position){
+function spawnBurst(position, color){
   for(let i=0;i<7;i++){
-    const mat = new THREE.MeshBasicMaterial({ color:0xffd54a, transparent:true, opacity:1 });
+    const mat = new THREE.MeshBasicMaterial({ color: color, transparent:true, opacity:1 });
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.06,6,6), mat);
     mesh.position.copy(position);
     scene.add(mesh);
@@ -519,6 +620,7 @@ function spawnCoinBurst(position){
     });
   }
 }
+function spawnCoinBurst(position){ spawnBurst(position, 0xffd54a); }
 
 // ---------- game state ----------
 const LEVEL_DISTANCE = 130;   // meters of distance per level
@@ -528,17 +630,20 @@ let distance = 0;
 let coinCount = 0;
 let level = 1;
 let running = false;
+let paused = false;
 let nextSpawnZ = -14;
 let shakeTime = 0;
 
 const MAX_LIVES = 3;
 let lives = MAX_LIVES;
 let invulnTime = 0;
+let lastStepSign = 0;
 
 const FIND_DISTANCE = 258; // partway through level 2
 let foundPrincess = false;
 let celebrating = false;
 let celebrateTimer = 0;
+let poozaMesh = null;
 
 function computeLevel(dist){
   return Math.min(MAX_LEVEL, 1 + Math.floor(dist / LEVEL_DISTANCE));
@@ -555,18 +660,21 @@ function computeScore(){
 
 // ---------- input actions ----------
 function tryMoveLane(dir){
+  if(paused) return;
   const newLane = laneIndex + dir;
   if(newLane < 0 || newLane > 2) return;
   laneIndex = newLane;
   targetX = LANE_X[laneIndex];
 }
 function tryJump(){
+  if(paused) return;
   if(!isJumping && !isSliding){
     isJumping = true;
     velY = 0.34;
   }
 }
 function trySlide(){
+  if(paused) return;
   if(!isJumping){
     isSliding = true;
     slideTimer = 32;
@@ -576,6 +684,8 @@ function trySlide(){
 // ---------- keyboard input ----------
 window.addEventListener('keydown', (e)=>{
   if(!running) return;
+  if(e.code === 'Escape' || e.code === 'KeyP'){ togglePause(); return; }
+  if(paused) return;
   if(e.code === 'ArrowLeft' || e.code === 'KeyA') tryMoveLane(-1);
   else if(e.code === 'ArrowRight' || e.code === 'KeyD') tryMoveLane(1);
   else if(e.code === 'ArrowUp' || e.code === 'Space' || e.code === 'KeyW') tryJump();
@@ -646,6 +756,42 @@ muteBtn.addEventListener('click', ()=>{
   else { stopAmbient(); }
 });
 
+const pauseBtn = document.getElementById('pauseBtn');
+const pausePanelBody = document.getElementById('pausePanelBody');
+pauseBtn.addEventListener('click', togglePause);
+document.getElementById('resumeBtn').addEventListener('click', togglePause);
+document.getElementById('pauseRestartBtn').addEventListener('click', ()=>{
+  paused = false;
+  pausePanelBody.style.display = 'none';
+  overlay.classList.add('hidden');
+  beginSequence();
+});
+document.getElementById('pauseExitBtn').addEventListener('click', ()=>{
+  running = false;
+  paused = false;
+  stopAmbient();
+  pausePanelBody.style.display = 'none';
+  startPanelBody.style.display = 'block';
+  renderLeaderboard(document.getElementById('startLeaderboardList'));
+});
+
+function togglePause(){
+  if(!running) return;
+  paused = !paused;
+  if(paused){
+    try{ if(audioCtx && audioCtx.state === 'running') audioCtx.suspend(); } catch(e){ /* ignore */ }
+    startPanelBody.style.display = 'none';
+    countdownPanelBody.style.display = 'none';
+    endPanelBody.style.display = 'none';
+    pausePanelBody.style.display = 'block';
+    overlay.classList.remove('hidden');
+  } else {
+    try{ if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); } catch(e){ /* ignore */ }
+    pausePanelBody.style.display = 'none';
+    overlay.classList.add('hidden');
+  }
+}
+
 let levelUpTimeout = null;
 function flashLevelUp(lvl){
   levelUpText.textContent = 'LEVEL ' + lvl;
@@ -686,7 +832,9 @@ function startGame(){
   obstacles.forEach(o=>removeFromScene(o.mesh));
   coins.forEach(c=>removeFromScene(c.mesh));
   particles.forEach(p=>removeFromScene(p.mesh));
-  obstacles = []; coins = []; particles = [];
+  lifePickups.forEach(l=>removeFromScene(l.mesh));
+  obstacles = []; coins = []; particles = []; lifePickups = [];
+  if(poozaMesh){ removeFromScene(poozaMesh); poozaMesh = null; }
 
   distance = 0; coinCount = 0; speed = 0.20; level = 1;
   laneIndex = 1; targetX = 0; player.position.x = 0;
@@ -698,6 +846,8 @@ function startGame(){
   shakeTime = 0;
   lives = MAX_LIVES;
   invulnTime = 0;
+  lastStepSign = 0;
+  paused = false;
   foundPrincess = false;
   celebrating = false;
   celebrateTimer = 0;
@@ -771,8 +921,8 @@ function updateHUD(){
   document.getElementById('coinVal').textContent = coinCount;
   const heartsEl = document.getElementById('livesVal');
   let hearts = '';
-  for(let i=0;i<MAX_LIVES;i++) hearts += (i < lives) ? '\u2665' : '\u2661';
-  heartsEl.textContent = hearts;
+  for(let i=0;i<lives;i++) hearts += '\u2665';
+  heartsEl.textContent = hearts || '\u2661';
 }
 
 // ---------- collision ----------
@@ -798,6 +948,16 @@ function checkCollisions(){
       coinCount++;
     }
   }
+  for(let i = lifePickups.length - 1; i >= 0; i--){
+    const l = lifePickups[i];
+    if(Math.abs(l.z - pz) < 0.6 && l.lane === laneIndex){
+      spawnBurst(l.mesh.position, 0xff4d4d);
+      if(lives < LIFE_CAP){ lives++; sfxLifeUp(); } else { sfxCoin(); }
+      removeFromScene(l.mesh);
+      lifePickups.splice(i,1);
+      updateHUD();
+    }
+  }
 }
 
 // ---------- main loop ----------
@@ -809,7 +969,7 @@ function animate(){
   try{
     frameCount++;
 
-    if(running){
+    if(running && !paused){
       const prevLevel = level;
     level = computeLevel(distance);
     speed = computeSpeed(distance, level);
@@ -817,7 +977,11 @@ function animate(){
 
     if(celebrating){
       celebrateTimer--;
-      if(celebrateTimer <= 0) celebrating = false;
+      if(poozaMesh) poozaMesh.rotation.y += 0.02;
+      if(celebrateTimer <= 0){
+        celebrating = false;
+        if(poozaMesh){ removeFromScene(poozaMesh); poozaMesh = null; }
+      }
     } else {
       distance += speed * 0.6;
 
@@ -825,7 +989,10 @@ function animate(){
         foundPrincess = true;
         celebrating = true;
         celebrateTimer = 120; // ~2 seconds, run pauses right here then resumes
-        spawnCoinBurst(player.position);
+        poozaMesh = createPoozaMesh();
+        poozaMesh.position.set(player.position.x, 0, player.position.z - 2.3);
+        scene.add(poozaMesh);
+        spawnCoinBurst(poozaMesh.position);
         sfxVictory();
         showLoveBanner();
       }
@@ -842,6 +1009,11 @@ function animate(){
         }
       });
       coins.forEach(c=>{ c.z += dz; c.mesh.position.z = c.z; c.mesh.rotation.z += 0.12; });
+      lifePickups.forEach(l=>{
+        l.z += dz; l.mesh.position.z = l.z;
+        l.mesh.rotation.y += 0.06;
+        l.mesh.position.y = 1.1 + Math.sin(frameCount*0.1 + l.bobSeed) * 0.1;
+      });
       segments.forEach(s=>{ s.z += dz; s.mesh.position.z = s.z; });
 
       segments.forEach(s=>{
@@ -857,6 +1029,10 @@ function animate(){
       });
       coins = coins.filter(c=>{
         if(c.z > 14){ removeFromScene(c.mesh); return false; }
+        return true;
+      });
+      lifePickups = lifePickups.filter(l=>{
+        if(l.z > 14){ removeFromScene(l.mesh); return false; }
         return true;
       });
 
@@ -911,6 +1087,11 @@ function animate(){
         rightArm.rotation.x += (-0.6 - rightArm.rotation.x) * 0.3;
       } else {
         const swing = Math.sin(distance * 9) * 0.75;
+        const stepSign = Math.sign(swing);
+        if(stepSign !== 0 && stepSign !== lastStepSign){
+          lastStepSign = stepSign;
+          sfxFootstep(stepSign);
+        }
         leftLeg.rotation.x  += (swing - leftLeg.rotation.x) * 0.4;
         rightLeg.rotation.x += (-swing - rightLeg.rotation.x) * 0.4;
         leftArm.rotation.x  += (-swing*0.8 - leftArm.rotation.x) * 0.4;
