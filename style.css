@@ -6,7 +6,7 @@
   --moss:#33e026;
   --blood:#e3160b;
   --parchment:#ca9219;
-  --jumbie:#d0f3d5;
+  --jumbie:#96f2a4;
 }
 
 *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -47,7 +47,7 @@ html,body{
 .hud-block-center .hud-label{ color:var(--jumbie); }
 .hud-value{
   font-size:26px; font-weight:bold; color:var(--gold-bright);
-  text-shadow:0 0 8px rgba(200,150,50,.5);
+  text-shadow:0 0 8px rgba(223, 239, 227, 0.5);
 }
 
 .hud-lives{ color:var(--blood); text-shadow:0 0 8px rgba(163,49,42,.6); letter-spacing:2px; }
