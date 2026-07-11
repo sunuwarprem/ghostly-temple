@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pooza: Run for Love</title>
+<link rel="stylesheet" href="style.css?v=10">
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="hud-block">
+    <div class="hud-label">Score</div>
+    <div class="hud-value" id="scoreVal">0</div>
+  </div>
+  <div class="hud-block hud-block-center">
+    <div class="hud-label">Level</div>
+    <div class="hud-value" id="levelVal">1</div>
+  </div>
+  <div class="hud-block">
+    <div class="hud-label">Lives</div>
+    <div class="hud-value hud-lives" id="livesVal">&hearts;&hearts;&hearts;</div>
+  </div>
+  <div class="hud-block">
+    <div class="hud-label">Relics</div>
+    <div class="hud-value" id="coinVal">0</div>
+  </div>
+  <button id="pauseBtn" class="mute-btn" type="button" aria-label="Pause">&#10074;&#10074;</button>
+  <button id="muteBtn" class="mute-btn" type="button" aria-label="Toggle sound">&#128266;</button>
+</div>
+
+<div id="levelUpBanner"><span id="levelUpText">LEVEL 2</span></div>
+<div id="loveBanner"><span>&hearts; I LOVE YOU &hearts;</span></div>
+<div id="heartRain"></div>
+
+<div id="controls-hint">&larr; &rarr; switch lane &nbsp;&middot;&nbsp; &uarr; / space jump &nbsp;&middot;&nbsp; &darr; slide</div>
+
+<!-- on-screen touch controls, shown on touch devices via CSS media query -->
+<div id="touchControls">
+  <div class="touch-row touch-row-top">
+    <button id="btnJump" class="touch-btn touch-btn-round" aria-label="Jump">&#9650;</button>
+  </div>
+  <div class="touch-row touch-row-mid">
+    <button id="btnLeft" class="touch-btn" aria-label="Move left">&#9664;</button>
+    <button id="btnRight" class="touch-btn" aria-label="Move right">&#9654;</button>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="panel">
+    <h1>Pooza: Run for Love</h1>
+    <div class="sub" id="panelSub">a dark ghostly temple hides Princess Pooza</div>
+    <div class="divider"></div>
+
+    <!-- title / start screen -->
+    <div id="startPanelBody">
+      <div class="princess-line">Somewhere deep in the ruins, <strong>Princess Pooza</strong> is waiting to be found.</div>
+      <label class="name-label" for="nameInput">Your name</label>
+      <input type="text" id="nameInput" maxlength="14" placeholder="Explorer" autocomplete="off">
+      <button id="startBtn">Begin the Run</button>
+
+      <div class="leaderboard" id="startLeaderboard">
+        <div class="leaderboard-title">Top Explorers</div>
+        <ol id="startLeaderboardList" class="leaderboard-list"></ol>
+      </div>
+    </div>
+
+    <!-- 3-2-1 countdown screen -->
+    <div id="countdownPanelBody" style="display:none;">
+      <div class="countdown-message">Pooza is waiting for you, go run</div>
+      <div class="countdown-number" id="countdownNumber">3</div>
+    </div>
+
+    <!-- pause screen -->
+    <div id="pausePanelBody" style="display:none;">
+      <div class="result-heading">Paused</div>
+      <div class="result-sub">Catch your breath in the ruins.</div>
+      <div class="btn-row">
+        <button id="resumeBtn">Resume</button>
+        <button id="pauseExitBtn" class="btn-secondary">Exit</button>
+      </div>
+      <button id="pauseRestartBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Restart Run</button>
+    </div>
+
+    <!-- game over / victory screen -->
+    <div id="endPanelBody" style="display:none;">
+      <div class="result-heading" id="endHeading">You Were Caught</div>
+      <div class="result-sub" id="endSub">The temple claims another explorer...</div>
+      <div class="stat-row">
+        <div class="stat"><div class="n" id="finalScore">0</div><div class="l">Score</div></div>
+        <div class="stat"><div class="n" id="finalLevel">1</div><div class="l">Level</div></div>
+        <div class="stat"><div class="n" id="finalCoins">0</div><div class="l">Relics</div></div>
+      </div>
+      <div class="best-line" id="newRecordLine" style="display:none;">New personal best!</div>
+
+      <div class="btn-row">
+        <button id="retryBtn">Play Again</button>
+        <button id="exitBtn" class="btn-secondary">Exit</button>
+      </div>
+
+      <div class="leaderboard" id="endLeaderboard">
+        <div class="leaderboard-title">Top Explorers</div>
+        <ol id="endLeaderboardList" class="leaderboard-list"></ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="game.js?v=10"></script>
+
+<!-- kept minimal and separate from the main overlay so it still works even if something else broke -->
+<div id="fatalOverlay" class="fatal-overlay" style="display:none;">
+  <div class="fatal-box">
+    <p id="fatalMessage">Something interrupted the game.</p>
+    <button id="fatalReloadBtn">Reload Game</button>
+  </div>
+</div>
+<script>
+document.getElementById('fatalReloadBtn').addEventListener('click', function(){
+  window.location.reload();
+});
+</script>
+</body>
+</html>
