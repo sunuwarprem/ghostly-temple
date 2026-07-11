@@ -94,6 +94,28 @@ html,body{
   transform:translate(-50%,0);
 }
 
+/* ---------- heart rain (true win celebration) ---------- */
+#heartRain{
+  position:fixed; inset:0; z-index:25;
+  pointer-events:none; overflow:hidden;
+  display:none;
+}
+#heartRain.active{ display:block; }
+.falling-heart{
+  position:absolute; top:-40px;
+  color:var(--blood);
+  text-shadow:0 0 10px rgba(163,49,42,.8);
+  animation-name:heartFall;
+  animation-timing-function:linear;
+  animation-iteration-count:infinite;
+}
+@keyframes heartFall{
+  0%{ transform:translateY(0) rotate(0deg); opacity:0; }
+  10%{ opacity:.95; }
+  90%{ opacity:.85; }
+  100%{ transform:translateY(112vh) rotate(360deg); opacity:.15; }
+}
+
 /* ---------- keyboard hint (desktop only) ---------- */
 #controls-hint{
   position:fixed; bottom:14px; left:50%; transform:translateX(-50%);

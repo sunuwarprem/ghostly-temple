@@ -198,8 +198,8 @@ canvas.addEventListener('webglcontextrestored', ()=>{
 }, false);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x1c1712, 18, 64);
-scene.background = new THREE.Color(0x1c1712);
+scene.fog = new THREE.Fog(0x3d362a, 26, 80);
+scene.background = new THREE.Color(0x3d362a);
 
 function getFov(){
   const aspect = window.innerWidth / window.innerHeight;
@@ -219,14 +219,15 @@ window.addEventListener('resize', ()=>{
 });
 
 // ---------- lighting ----------
-scene.add(new THREE.AmbientLight(0x8a7a60, 1.7));
-const torchLight = new THREE.PointLight(0xff9a3d, 2.4, 24);
+scene.add(new THREE.AmbientLight(0xb8a888, 2.8));
+scene.add(new THREE.HemisphereLight(0x9db0d8, 0x4a3f2e, 1.0));
+const torchLight = new THREE.PointLight(0xff9a3d, 2.8, 28);
 torchLight.position.set(0, 4, 4);
 scene.add(torchLight);
-const moonLight = new THREE.DirectionalLight(0x9db0d8, 0.85);
+const moonLight = new THREE.DirectionalLight(0xc0d0ee, 1.4);
 moonLight.position.set(-5, 10, -10);
 scene.add(moonLight);
-const fillLight = new THREE.DirectionalLight(0xffe0b0, 0.35);
+const fillLight = new THREE.DirectionalLight(0xffe8c0, 0.75);
 fillLight.position.set(4, 6, 8);
 scene.add(fillLight);
 
@@ -377,9 +378,49 @@ function createBush(x, z){
   return bush;
 }
 
+// small decorative house, sized to sit inside the corridor
+function createHouse(x, z){
+  const house = new THREE.Group();
+  const wallMat = new THREE.MeshStandardMaterial({ color:0x6b5a42, roughness:.85 });
+  const roofMat = new THREE.MeshStandardMaterial({ color:0x3d2f22, roughness:.8 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.75, 0.85), wallMat);
+  body.position.y = 0.38;
+  house.add(body);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(0.68, 0.55, 4), roofMat);
+  roof.rotation.y = Math.PI/4;
+  roof.position.y = 1.03;
+  house.add(roof);
+  const windowLight = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.18, 0.18),
+    new THREE.MeshStandardMaterial({ color:0xffd98a, emissive:0xffae42, emissiveIntensity:1.3 })
+  );
+  windowLight.position.set(0, 0.42, 0.43);
+  house.add(windowLight);
+  house.position.set(x, 0, z);
+  house.rotation.y = (Math.random()-0.5)*0.4;
+  return house;
+}
+
+// small decorative villager, purely visual, no collision/interaction
+function createVillager(x, z){
+  const v = new THREE.Group();
+  const clothColors = [0x6b4a3a, 0x3a4a6b, 0x4a6b3a, 0x6b3a5a];
+  const cloth = new THREE.MeshStandardMaterial({ color: clothColors[Math.floor(Math.random()*clothColors.length)], roughness:.8 });
+  const skin = new THREE.MeshStandardMaterial({ color:0xd9a066, roughness:.6 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.6, 8), cloth);
+  body.position.y = 0.48;
+  v.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), skin);
+  head.position.y = 0.88;
+  v.add(head);
+  v.position.set(x, 0, z);
+  v.rotation.y = Math.random()*Math.PI*2;
+  return v;
+}
+
 function makeGroundSegment(zPos){
   const g = new THREE.Group();
-  const floorMat = new THREE.MeshStandardMaterial({ color:0x4a4030, roughness:.95 });
+  const floorMat = new THREE.MeshStandardMaterial({ color:0x6e5f48, roughness:.95 });
   const floor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.4, SEGMENT_LEN), floorMat);
   floor.position.set(0, -0.2, zPos);
   g.add(floor);
@@ -387,7 +428,7 @@ function makeGroundSegment(zPos){
   for(const side of [-1,1]){
     const pillar = new THREE.Mesh(
       new THREE.BoxGeometry(0.6, 4.2, SEGMENT_LEN),
-      new THREE.MeshStandardMaterial({ color:0x3a3226, roughness:.9 })
+      new THREE.MeshStandardMaterial({ color:0x5a4c38, roughness:.9 })
     );
     pillar.position.set(side*4.3, 1.9, zPos);
     g.add(pillar);
@@ -402,29 +443,47 @@ function makeGroundSegment(zPos){
     flameMeshes.push(flame);
 
     // patch of moss growing on the pillar stone
-    if(Math.random() < 0.6){
+    if(Math.random() < 0.85){
       const moss = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(0.24, 0),
-        new THREE.MeshStandardMaterial({ color:0x445c37, roughness:1 })
+        new THREE.IcosahedronGeometry(0.26, 0),
+        new THREE.MeshStandardMaterial({ color:0x5a7a45, roughness:1 })
       );
       moss.scale.set(1, 0.5, 0.6);
-      moss.position.set(side*(4.3 - side*0.32), 0.7 + Math.random()*1.6, zPos + (Math.random()-0.5)*4);
+      moss.position.set(side*(4.3 - side*0.32), 0.6 + Math.random()*1.8, zPos + (Math.random()-0.5)*4);
       g.add(moss);
+    }
+
+    // bush hugging the inside base of each pillar
+    if(Math.random() < 0.75){
+      g.add(createBush(side*(3.85 + Math.random()*0.3), zPos + (Math.random()-0.5)*4));
     }
   }
 
-  // scattered atmosphere: dead trees further out, pumpkins and bushes closer to the path
-  if(Math.random() < 0.55){
+  // scattered atmosphere, all placed INSIDE the walls (between the outer lane and the pillars)
+  // so it's actually visible rather than hidden behind the corridor walls
+  if(Math.random() < 0.5){
     const side = Math.random() < 0.5 ? -1 : 1;
-    g.add(createDeadTree(side*(6.4 + Math.random()*2.4), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
+    g.add(createDeadTree(side*(3.0 + Math.random()*0.7), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
+  }
+  if(Math.random() < 0.4){
+    const side = Math.random() < 0.5 ? -1 : 1;
+    g.add(createPumpkin(side*(2.7 + Math.random()*0.5), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
+  }
+  if(Math.random() < 0.7){
+    const side = Math.random() < 0.5 ? -1 : 1;
+    g.add(createBush(side*(3.2 + Math.random()*0.6), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
   }
   if(Math.random() < 0.45){
     const side = Math.random() < 0.5 ? -1 : 1;
-    g.add(createPumpkin(side*(4.9 + Math.random()*1.1), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
+    g.add(createBush(side*(2.8 + Math.random()*0.4), zPos - SEGMENT_LEN/2 + Math.random()*SEGMENT_LEN));
   }
-  if(Math.random() < 0.5){
+  if(Math.random() < 0.22){
     const side = Math.random() < 0.5 ? -1 : 1;
-    g.add(createBush(side*(4.6 + Math.random()*1.3), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
+    g.add(createHouse(side*(3.1 + Math.random()*0.5), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.6));
+  }
+  if(Math.random() < 0.3){
+    const side = Math.random() < 0.5 ? -1 : 1;
+    g.add(createVillager(side*(2.75 + Math.random()*0.4), zPos + (Math.random()-0.5)*SEGMENT_LEN*0.7));
   }
 
   trackGroup.add(g);
@@ -517,6 +576,7 @@ function pickObstacleType(level){
   if(level === 1 && Math.random() < 0.09) types.push('jumbie'); // rare level-1 cameo, ~1-2 per run
   if(level >= 2) types.push('jumbie');
   if(level >= 8) types.push('jumbie'); // extra weight only once things ramp back up late-game
+  if(level >= MAX_LEVEL) types.push('jumbie'); // final level: more frequent, some will be the big variant
   return types[Math.floor(Math.random()*types.length)];
 }
 
@@ -551,20 +611,20 @@ function spawnRowAt(z, level){
     // the pit itself: dark indigo rather than pure black so it reads against the floor
     const pit = new THREE.Mesh(
       new THREE.BoxGeometry(1.8, 0.2, 1.8),
-      new THREE.MeshStandardMaterial({ color:0x120a1a, roughness:1 })
+      new THREE.MeshStandardMaterial({ color:0x241830, roughness:1 })
     );
     group.add(pit);
 
     // glowing warning rim traced around the edge, like carved temple hazard glyphs
     const rimGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.86, 0.22, 1.86));
-    const rimMat = new THREE.LineBasicMaterial({ color:0xff9a3d, transparent:true, opacity:.9 });
+    const rimMat = new THREE.LineBasicMaterial({ color:0xffb04d, transparent:true, opacity:1 });
     const rim = new THREE.LineSegments(rimGeo, rimMat);
     group.add(rim);
 
-    // faint glowing floor decal just past the rim, extra visibility from a distance
+    // glowing floor decal just past the rim, extra visibility from a distance
     const glow = new THREE.Mesh(
       new THREE.PlaneGeometry(2.2, 2.2),
-      new THREE.MeshBasicMaterial({ color:0xff9a3d, transparent:true, opacity:.16, side:THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ color:0xffb04d, transparent:true, opacity:.28, side:THREE.DoubleSide })
     );
     glow.rotation.x = -Math.PI/2;
     glow.position.y = 0.11;
@@ -575,9 +635,22 @@ function spawnRowAt(z, level){
     obstacles.push({ mesh: group, lane, z, type:'gap' });
   } else if(type === 'jumbie'){
     const mesh = createJumbieMesh();
+    const isBig = level >= MAX_LEVEL && Math.random() < 0.4;
+    if(isBig){
+      mesh.scale.set(1.7, 1.7, 1.7);
+      // darken the robe and intensify the glowing parts so it reads as a bigger threat
+      mesh.traverse(child=>{
+        if(!child.material) return;
+        if(child.material.emissiveIntensity){
+          child.material.emissiveIntensity *= 1.6;
+        } else if(child.material.color){
+          child.material.color.multiplyScalar(0.75);
+        }
+      });
+    }
     mesh.position.set(LANE_X[lane], 0, z);
     scene.add(mesh);
-    obstacles.push({ mesh, lane, z, type:'jumbie', bobSeed: Math.random()*10, baseX: LANE_X[lane] });
+    obstacles.push({ mesh, lane, z, type:'jumbie', bobSeed: Math.random()*10, baseX: LANE_X[lane], big: isBig });
   }
 
   if(Math.random() < 0.6){
@@ -623,7 +696,7 @@ function spawnBurst(position, color){
 function spawnCoinBurst(position){ spawnBurst(position, 0xffd54a); }
 
 // ---------- game state ----------
-const LEVEL_DISTANCE = 130;   // meters of distance per level
+const LEVEL_DISTANCE = 650;   // meters of distance per level (~1.5 min per level at base pace)
 const MAX_LEVEL = 10;
 let speed = 0.20;
 let distance = 0;
@@ -639,11 +712,14 @@ let lives = MAX_LIVES;
 let invulnTime = 0;
 let lastStepSign = 0;
 
-const FIND_DISTANCE = 258; // partway through level 2
+const FIND_DISTANCE = 1295; // partway through level 2, near its end
 let foundPrincess = false;
 let celebrating = false;
 let celebrateTimer = 0;
 let poozaMesh = null;
+
+const WIN_DISTANCE = LEVEL_DISTANCE * MAX_LEVEL; // clearing the final level = winning the game
+let gameWon = false;
 
 function computeLevel(dist){
   return Math.min(MAX_LEVEL, 1 + Math.floor(dist / LEVEL_DISTANCE));
@@ -740,6 +816,7 @@ renderLeaderboard(document.getElementById('startLeaderboardList'));
 document.getElementById('startBtn').addEventListener('click', ()=>{ ensureAudio(); beginSequence(); });
 document.getElementById('retryBtn').addEventListener('click', ()=>{ ensureAudio(); beginSequence(); });
 document.getElementById('exitBtn').addEventListener('click', ()=>{
+  stopHeartRain();
   endPanelBody.style.display = 'none';
   startPanelBody.style.display = 'block';
   renderLeaderboard(document.getElementById('startLeaderboardList'));
@@ -808,6 +885,30 @@ function showLoveBanner(){
   loveBannerTimeout = setTimeout(()=> loveBanner.classList.remove('show'), 1900);
 }
 
+function startHeartRain(){
+  const container = document.getElementById('heartRain');
+  if(!container) return;
+  container.innerHTML = '';
+  const count = 44;
+  for(let i=0;i<count;i++){
+    const span = document.createElement('span');
+    span.className = 'falling-heart';
+    span.textContent = '\u2665';
+    span.style.left = (Math.random()*100) + 'vw';
+    span.style.fontSize = (14 + Math.random()*24) + 'px';
+    span.style.animationDuration = (3 + Math.random()*3.5) + 's';
+    span.style.animationDelay = (Math.random()*2.5) + 's';
+    container.appendChild(span);
+  }
+  container.classList.add('active');
+}
+function stopHeartRain(){
+  const container = document.getElementById('heartRain');
+  if(!container) return;
+  container.classList.remove('active');
+  container.innerHTML = '';
+}
+
 function beginSequence(){
   startPanelBody.style.display = 'none';
   endPanelBody.style.display = 'none';
@@ -830,6 +931,7 @@ function beginSequence(){
 }
 
 function startGame(){
+  stopHeartRain();
   obstacles.forEach(o=>removeFromScene(o.mesh));
   coins.forEach(c=>removeFromScene(c.mesh));
   particles.forEach(p=>removeFromScene(p.mesh));
@@ -852,6 +954,7 @@ function startGame(){
   foundPrincess = false;
   celebrating = false;
   celebrateTimer = 0;
+  gameWon = false;
   player.visible = true;
   camera.position.x = CAM_BASE.x; camera.position.y = CAM_BASE.y;
 
@@ -897,8 +1000,9 @@ function finishRun(victory){
   const endHeading = document.getElementById('endHeading');
   const endSub = document.getElementById('endSub');
   if(victory){
-    endHeading.textContent = 'I LOVE YOU';
-    endSub.textContent = 'You found Princess Pooza in the ruins.';
+    endHeading.textContent = 'You Found Her Forever';
+    endSub.textContent = 'You cleared the temple and Princess Pooza is safe at last.';
+    startHeartRain();
   } else {
     endHeading.textContent = 'You Were Caught';
     endSub.textContent = 'The temple claims another explorer...';
@@ -989,7 +1093,7 @@ function animate(){
       if(!foundPrincess && distance >= FIND_DISTANCE){
         foundPrincess = true;
         celebrating = true;
-        celebrateTimer = 120; // ~2 seconds, run pauses right here then resumes
+        celebrateTimer = 420; // ~7 seconds, run pauses right here then resumes
         poozaMesh = createPoozaMesh();
         poozaMesh.position.set(player.position.x, 0, player.position.z - 2.3);
         scene.add(poozaMesh);
@@ -997,9 +1101,14 @@ function animate(){
         sfxVictory();
         showLoveBanner();
       }
+
+      if(!gameWon && distance >= WIN_DISTANCE){
+        gameWon = true;
+        finishRun(true);
+      }
     }
 
-    if(!celebrating){
+    if(!celebrating && running){
       const dz = speed;
       obstacles.forEach(o=>{
         o.z += dz; o.mesh.position.z = o.z;
