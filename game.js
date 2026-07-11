@@ -198,8 +198,8 @@ canvas.addEventListener('webglcontextrestored', ()=>{
 }, false);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x3d362a, 26, 80);
-scene.background = new THREE.Color(0x3d362a);
+scene.fog = new THREE.Fog(0x2e2820, 22, 72);
+scene.background = new THREE.Color(0x2e2820);
 
 function getFov(){
   const aspect = window.innerWidth / window.innerHeight;
@@ -219,15 +219,14 @@ window.addEventListener('resize', ()=>{
 });
 
 // ---------- lighting ----------
-scene.add(new THREE.AmbientLight(0xb8a888, 2.8));
-scene.add(new THREE.HemisphereLight(0x9db0d8, 0x4a3f2e, 1.0));
-const torchLight = new THREE.PointLight(0xff9a3d, 2.8, 28);
+scene.add(new THREE.AmbientLight(0xa89880, 2.4));
+const torchLight = new THREE.PointLight(0xff9a3d, 2.6, 26);
 torchLight.position.set(0, 4, 4);
 scene.add(torchLight);
-const moonLight = new THREE.DirectionalLight(0xc0d0ee, 1.4);
+const moonLight = new THREE.DirectionalLight(0xb0c0e0, 1.2);
 moonLight.position.set(-5, 10, -10);
 scene.add(moonLight);
-const fillLight = new THREE.DirectionalLight(0xffe8c0, 0.75);
+const fillLight = new THREE.DirectionalLight(0xffe8c0, 0.6);
 fillLight.position.set(4, 6, 8);
 scene.add(fillLight);
 
@@ -420,7 +419,7 @@ function createVillager(x, z){
 
 function makeGroundSegment(zPos){
   const g = new THREE.Group();
-  const floorMat = new THREE.MeshStandardMaterial({ color:0x6e5f48, roughness:.95 });
+  const floorMat = new THREE.MeshStandardMaterial({ color:0x5c4f3c, roughness:.95 });
   const floor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.4, SEGMENT_LEN), floorMat);
   floor.position.set(0, -0.2, zPos);
   g.add(floor);
@@ -428,7 +427,7 @@ function makeGroundSegment(zPos){
   for(const side of [-1,1]){
     const pillar = new THREE.Mesh(
       new THREE.BoxGeometry(0.6, 4.2, SEGMENT_LEN),
-      new THREE.MeshStandardMaterial({ color:0x5a4c38, roughness:.9 })
+      new THREE.MeshStandardMaterial({ color:0x4a4030, roughness:.9 })
     );
     pillar.position.set(side*4.3, 1.9, zPos);
     g.add(pillar);
