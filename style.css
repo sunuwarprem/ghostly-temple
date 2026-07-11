@@ -1,12 +1,12 @@
 :root{
-  --gold:#c9a227;
-  --gold-bright:#e8c65f;
+  --gold:#4c3c06;
+  --gold-bright:#7e6108;
   --stone-dark:#1b1712;
   --stone-mid:#2c241b;
-  --moss:#3f5a3d;
-  --blood:#a3312a;
-  --parchment:#e9dcc0;
-  --jumbie:#7fd68a;
+  --moss:#33e026;
+  --blood:#e3160b;
+  --parchment:#ca9219;
+  --jumbie:#d0f3d5;
 }
 
 *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
