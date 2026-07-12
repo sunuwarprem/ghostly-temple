@@ -695,7 +695,7 @@ function spawnBurst(position, color){
 function spawnCoinBurst(position){ spawnBurst(position, 0xffd54a); }
 
 // ---------- game state ----------
-const LEVEL_DISTANCE = 650;   // meters of distance per level (~1.5 min per level at base pace)
+const LEVEL_DISTANCE = 433;   // meters of distance per level (~1.5 min per level at base pace)
 const MAX_LEVEL = 10;
 let speed = 0.20;
 let distance = 0;
@@ -711,7 +711,7 @@ let lives = MAX_LIVES;
 let invulnTime = 0;
 let lastStepSign = 0;
 
-const FIND_DISTANCE = 1295; // partway through level 2, near its end
+const FIND_DISTANCE = 860; // partway through level 2, near its end
 let foundPrincess = false;
 let celebrating = false;
 let celebrateTimer = 0;
