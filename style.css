@@ -84,8 +84,8 @@ html,body{
   z-index:13; pointer-events:none;
   font-family:'Georgia', serif; font-weight:bold;
   font-size:52px; letter-spacing:3px;
-  color:var(--blood);
-  text-shadow:0 0 24px rgba(163,49,42,.85), 0 0 50px rgba(0,0,0,.9);
+ color: #39ff14;
+text-shadow:0 0 20px #39ff14, 0 0 40px #39ff14, 0 0 70px rgba(57,255,20,.6);
   opacity:0;
   transition:opacity .4s ease, transform .4s ease;
 }
