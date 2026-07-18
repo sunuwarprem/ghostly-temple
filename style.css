@@ -116,7 +116,7 @@ html,body{
   #controls-hint{ display:none; }
 }
 #joystickZone{
-  position:absolute; left:26px; bottom:calc(30px + env(safe-area-inset-bottom));
+  position:absolute; right:26px; bottom:calc(30px + env(safe-area-inset-bottom));
   width:130px; height:130px; pointer-events:auto;
 }
 #joystickBase{
@@ -133,7 +133,7 @@ html,body{
 }
 .touch-btn{
   pointer-events:auto;
-  position:absolute; right:30px; bottom:calc(40px + env(safe-area-inset-bottom));
+  position:absolute; left:30px; bottom:calc(40px + env(safe-area-inset-bottom));
   width:80px; height:80px; border-radius:50%;
   border:1px solid var(--rust);
   background:linear-gradient(180deg, rgba(28,24,21,.85), rgba(28,24,21,.55));

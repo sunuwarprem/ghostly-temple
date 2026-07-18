@@ -38,6 +38,10 @@ function sfxShoot(){ playTone(180, 0.08, 'sawtooth', 0.2, 0); playTone(90, 0.1, 
 function sfxHitJumbie(){ playTone(500, 0.08, 'square', 0.18, 0); }
 function sfxKillJumbie(){ playTone(260, 0.1, 'sawtooth', 0.2, 0); playTone(140, 0.16, 'sawtooth', 0.18, 0.06); }
 function sfxPlayerHurt(){ playTone(140, 0.22, 'sawtooth', 0.28, 0); playTone(80, 0.28, 'square', 0.18, 0.05); }
+function sfxFootstep(running, sign){
+  const base = running ? (sign > 0 ? 105 : 90) : (sign > 0 ? 85 : 72);
+  playTone(base, 0.06, 'square', running ? 0.08 : 0.05, 0);
+}
 function sfxWave(){ playTone(300, 0.15, 'triangle', 0.22, 0); playTone(400, 0.15, 'triangle', 0.2, 0.12); }
 function sfxGameOver(){
   playTone(300, 0.22, 'triangle', 0.24, 0);
@@ -157,10 +161,50 @@ scene.add(fillLight);
 // low warm "sun disc" for visual anchor, far in the distance
 const sunDisc = new THREE.Mesh(
   new THREE.SphereGeometry(6, 16, 16),
-  new THREE.MeshBasicMaterial({ color:0xffcf8a })
+  new THREE.MeshBasicMaterial({ color:0xffcf8a, fog:false })
 );
 sunDisc.position.set(-120, 26, -60);
 scene.add(sunDisc);
+
+// moon and Jupiter, visible in the dawn sky alongside the sun — a common enough
+// sight in early morning twilight. Both use canvas textures so they're
+// recognizable, and fog:false keeps them crisp above the ground-level haze.
+function createCelestialTexture(kind){
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if(kind === 'moon'){
+    ctx.fillStyle = '#d8d4c8';
+    ctx.beginPath(); ctx.arc(128,128,128,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(150,145,135,0.55)';
+    for(let i=0;i<9;i++){
+      const cx = 40+Math.random()*176, cy = 40+Math.random()*176, r = 8+Math.random()*22;
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    }
+  } else {
+    const bands = ['#c9a06a','#a8763f','#d9b98a','#8a5a2f','#e0c49a','#b0703a','#c9a06a'];
+    const bandH = 256/bands.length;
+    bands.forEach((color,i)=>{ ctx.fillStyle = color; ctx.fillRect(0, i*bandH, 256, bandH+1); });
+    ctx.fillStyle = '#b8503a';
+    ctx.beginPath(); ctx.ellipse(75,150,28,17,0,0,Math.PI*2); ctx.fill();
+  }
+  return new THREE.CanvasTexture(canvas);
+}
+
+const moonMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(7, 16, 16),
+  new THREE.MeshBasicMaterial({ map: createCelestialTexture('moon'), fog:false })
+);
+moonMesh.position.set(150, 85, -170);
+scene.add(moonMesh);
+
+const jupiterMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(11, 16, 16),
+  new THREE.MeshBasicMaterial({ map: createCelestialTexture('jupiter'), fog:false })
+);
+jupiterMesh.position.set(-160, 65, -190);
+scene.add(jupiterMesh);
+
 
 // ---------- materials shared with the temple game character ----------
 const SKIN  = new THREE.MeshStandardMaterial({ color:0xd9a066, roughness:.6 });
@@ -244,7 +288,7 @@ function createPoozaMesh(){
 
 // a tall beam of light marks where Pooza is, visible from across the city as a search aid
 const POOZA_POS = { x: 34, z: -34 };
-const KILLS_TO_REVEAL = 10;
+const KILLS_TO_REVEAL = 30;
 let poozaRevealed = false;
 const poozaMesh = createPoozaMesh();
 poozaMesh.position.set(POOZA_POS.x, 0, POOZA_POS.z);
@@ -336,6 +380,27 @@ for(let i=0;i<70;i++){
   scene.add(crack);
 }
 
+// reusable canvas-texture sign, used for building names / posters
+function createTextSign(text, width, height, opts){
+  opts = opts || {};
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = opts.bg || 'rgba(20,15,10,0.9)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = opts.border || 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(3, 3, canvas.width-6, canvas.height-6);
+  ctx.font = (opts.fontWeight || 'bold') + ' ' + (opts.fontSize || 62) + 'px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = opts.color || '#ffcf8a';
+  ctx.fillText(text, canvas.width/2, canvas.height/2);
+  const texture = new THREE.CanvasTexture(canvas);
+  const mat = new THREE.MeshBasicMaterial({ map: texture, transparent:true, fog:false });
+  return new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
+}
+
 function createHouse(x, z, w, d, h){
   const g = new THREE.Group();
   const wallMat = new THREE.MeshStandardMaterial({ color: [0x6b5a42,0x5a4c3a,0x4a4438,0x6a4838][Math.floor(Math.random()*4)], roughness:.85 });
@@ -391,6 +456,10 @@ function createCityHall(x, z){
   const steps = new THREE.Mesh(new THREE.BoxGeometry(17, 0.6, 2.5), stoneMat);
   steps.position.set(0, 0.3, 6.5);
   g.add(steps);
+
+  const nameSign = createTextSign('POOZA CITY HALL', 9, 1.3, { bg:'rgba(30,26,20,0.9)', color:'#ffd98a', fontSize:52 });
+  nameSign.position.set(0, 5.7, 5.02);
+  g.add(nameSign);
 
   g.position.set(x, 0, z);
   return g;
@@ -450,6 +519,37 @@ function createMall(x, z){
     new THREE.MeshStandardMaterial({ color:0xff3df0, emissive:0xff2df0, emissiveIntensity:1.6 }));
   sign.position.set(0, 5.8, 6.1);
   g.add(sign);
+
+  g.position.set(x, 0, z);
+  return g;
+}
+
+// Movie Hall: purple-lit windows and a lit marquee sign with the movie title
+function createMovieHall(x, z){
+  const g = new THREE.Group();
+  const wallMat = new THREE.MeshStandardMaterial({ color:0x2e2430, roughness:.8 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(14, 6, 10), wallMat);
+  body.position.y = 3;
+  g.add(body);
+
+  // purple-lit windows across the front
+  const purpleMat = new THREE.MeshStandardMaterial({ color:0xb84dff, emissive:0x9910ff, emissiveIntensity:1.5 });
+  for(let i=-2;i<=2;i++){
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 1.3), purpleMat);
+    win.position.set(i*2.4, 3.3, 5.01);
+    g.add(win);
+  }
+
+  // marquee canopy over the entrance
+  const canopy = new THREE.Mesh(new THREE.BoxGeometry(9.5, 0.3, 1.6),
+    new THREE.MeshStandardMaterial({ color:0x1a1420, roughness:.7 }));
+  canopy.position.set(0, 4.3, 6.0);
+  g.add(canopy);
+
+  // lit movie title sign, mounted on the marquee
+  const titleSign = createTextSign('EVIL DEAD', 8.6, 1.3, { bg:'#160018', color:'#e83dff', border:'rgba(232,61,255,0.5)', fontSize:56 });
+  titleSign.position.set(0, 5.35, 5.05);
+  g.add(titleSign);
 
   g.position.set(x, 0, z);
   return g;
@@ -682,6 +782,10 @@ const mall = createMall(70, 25);
 decorGroup.add(mall);
 blockers.push({ x:70, z:25, radius: 11 });
 
+const movieHall = createMovieHall(0, 70);
+decorGroup.add(movieHall);
+blockers.push({ x:0, z:70, radius: 9 });
+
 // cars scattered along streets (parked, decorative + collidable)
 for(let i=0;i<70;i++){
   const alongX = Math.random() < 0.5;
@@ -738,7 +842,7 @@ let forwardSpeed = 0; // current forward velocity (negative = moving backward)
 const MAX_FORWARD_SPEED = 6.5;
 const MAX_BACKWARD_SPEED = 3.2;
 const ACCEL = 16;
-const TURN_SPEED = 2.4; // radians/sec, how fast turning input swings your facing
+const TURN_SPEED = 1.5; // radians/sec, how fast turning input swings your facing
 const PLAYER_RADIUS = 0.5;
 let playerHealth = 3;
 const MAX_HEALTH = 3;
@@ -746,6 +850,7 @@ let invulnTime = 0;
 const LIFE_CAP = 5;
 let lifePickups = [];
 let lifeSpawnTimer = 0;
+let lastStepSign = 0;
 
 // cosmetic jump hop, temple-run feel
 let playerY = 0, jumpVelY = 0, isJumping = false;
@@ -762,7 +867,7 @@ function updateMovement(dt){
   turnInput = Math.max(-1, Math.min(1, turnInput));
   throttleInput = Math.max(-1, Math.min(1, throttleInput));
 
-  facing += turnInput * TURN_SPEED * dt;
+  facing -= turnInput * TURN_SPEED * dt;
 
   const targetSpeed = throttleInput >= 0 ? throttleInput * MAX_FORWARD_SPEED : throttleInput * MAX_BACKWARD_SPEED;
   const speedDiff = targetSpeed - forwardSpeed;
@@ -1205,6 +1310,7 @@ function startGame(){
   invulnTime = 0;
   wave = 1;
   kills = 0;
+  lastStepSign = 0;
   poozaFound = false;
   celebrating = false;
   celebrateTimer = 0;
@@ -1303,6 +1409,11 @@ function animate(){
       if(moving){
         const runSpeed = 0.25 + Math.abs(forwardSpeed) * 0.03;
         const swing = Math.sin(frameCount*runSpeed) * 0.7;
+        const stepSign = Math.sign(swing);
+        if(stepSign !== 0 && stepSign !== lastStepSign){
+          lastStepSign = stepSign;
+          sfxFootstep(Math.abs(forwardSpeed) > 4.5, stepSign);
+        }
         playerRig.leftLeg.rotation.x  += (swing - playerRig.leftLeg.rotation.x) * 0.4;
         playerRig.rightLeg.rotation.x += (-swing - playerRig.rightLeg.rotation.x) * 0.4;
         playerRig.leftArm.rotation.x  += (-swing*0.7 - playerRig.leftArm.rotation.x) * 0.4;

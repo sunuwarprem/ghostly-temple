@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Jumbie Hunt: Find Pooza</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
@@ -25,7 +25,7 @@
   </div>
   <div class="hud-block hud-block-center">
     <div class="hud-label">Kills</div>
-    <div class="hud-value" id="killsVal">0/10</div>
+    <div class="hud-value" id="killsVal">0/30</div>
   </div>
   <button id="pauseBtn" class="mute-btn" type="button" aria-label="Pause">&#10074;&#10074;</button>
   <button id="muteBtn" class="mute-btn" type="button" aria-label="Toggle sound">&#128266;</button>
@@ -42,7 +42,7 @@
   <div id="joystickZone">
     <div id="joystickBase"><div id="joystickKnob"></div></div>
   </div>
-  <button id="jumpBtn" class="touch-btn touch-btn-round" aria-label="Jump" style="bottom:calc(140px + env(safe-area-inset-bottom)); right:40px; width:64px; height:64px; font-size:22px;">&#8593;</button>
+  <button id="jumpBtn" class="touch-btn touch-btn-round" aria-label="Jump" style="bottom:calc(140px + env(safe-area-inset-bottom)); left:40px; width:64px; height:64px; font-size:22px;">&#8593;</button>
   <button id="shootBtn" class="touch-btn touch-btn-round" aria-label="Shoot">&#128293;</button>
 </div>
 
@@ -53,7 +53,7 @@
     <div class="divider"></div>
 
     <div id="startPanelBody">
-      <div class="princess-line">The jumbies took the city at dawn. Clear <strong>10 of them</strong> to reveal where <strong>Princess Pooza</strong> is hiding.</div>
+      <div class="princess-line">The jumbies took the city at dawn. Clear <strong>30 of them</strong> to reveal where <strong>Princess Pooza</strong> is hiding.</div>
       <label class="name-label" for="nameInput">Your name</label>
       <input type="text" id="nameInput" maxlength="14" placeholder="Explorer" autocomplete="off">
       <button id="startBtn">Enter the City</button>
@@ -100,7 +100,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="game.js?v=6"></script>
+<script src="game.js?v=8"></script>
 
 <!-- multiplayer: safe to leave these in even before Firebase is configured —
      multiplayer.js detects placeholder config and quietly runs single-player -->
