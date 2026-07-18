@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Jumbie Run: City Chase: pooza</title>
-<link rel="stylesheet" href="style.css?v=5">
+<title>Jumbie Hunt: Find Pooza</title>
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -12,96 +12,87 @@
 
 <div id="hud">
   <div class="hud-block">
-    <div class="hud-label">Score</div>
-    <div class="hud-value" id="scoreVal">0</div>
+    <div class="hud-label">Health</div>
+    <div class="hud-value hud-health" id="healthVal">&hearts;&hearts;&hearts;</div>
   </div>
   <div class="hud-block hud-block-center">
-    <div class="hud-label">Level</div>
-    <div class="hud-value" id="levelVal">1</div>
+    <div class="hud-label">Wave</div>
+    <div class="hud-value" id="waveVal">1</div>
   </div>
   <div class="hud-block">
-    <div class="hud-label">Lives</div>
-    <div class="hud-value hud-lives" id="livesVal">&hearts;&hearts;&hearts;</div>
+    <div class="hud-label">Jumbies</div>
+    <div class="hud-value" id="jumbieVal">10</div>
   </div>
-  <div class="hud-block">
-    <div class="hud-label">Relics</div>
-    <div class="hud-value" id="coinVal">0</div>
+  <div class="hud-block hud-block-center">
+    <div class="hud-label">Kills</div>
+    <div class="hud-value" id="killsVal">0/10</div>
   </div>
   <button id="pauseBtn" class="mute-btn" type="button" aria-label="Pause">&#10074;&#10074;</button>
   <button id="muteBtn" class="mute-btn" type="button" aria-label="Toggle sound">&#128266;</button>
 </div>
 
-<div id="levelUpBanner"><span id="levelUpText">LEVEL 2</span></div>
-<div id="loveBanner"><span>&hearts; I LOVE YOU , I come to find you my dear pooza &hearts;</span></div>
+<div id="bannerMsg"><span id="bannerText">WAVE 2</span></div>
+<div id="poozaMessage"><span>&hearts; You found her &hearts;</span></div>
 <div id="heartRain"></div>
 
-<div id="controls-hint">&larr; &rarr; switch lane &nbsp;&middot;&nbsp; &uarr; / space jump &nbsp;&middot;&nbsp; &darr; slide</div>
+<div id="controls-hint">W/S forward &amp; back &nbsp;&middot;&nbsp; A/D turn &nbsp;&middot;&nbsp; space jump &nbsp;&middot;&nbsp; click shoot</div>
 
-<!-- on-screen touch controls, shown on touch devices via CSS media query -->
+<!-- on-screen mobile controls -->
 <div id="touchControls">
-  <div class="touch-row touch-row-top">
-    <button id="btnJump" class="touch-btn touch-btn-round" aria-label="Jump">&#9650;</button>
+  <div id="joystickZone">
+    <div id="joystickBase"><div id="joystickKnob"></div></div>
   </div>
-  <div class="touch-row touch-row-mid">
-    <button id="btnLeft" class="touch-btn" aria-label="Move left">&#9664;</button>
-    <button id="btnRight" class="touch-btn" aria-label="Move right">&#9654;</button>
-  </div>
+  <button id="jumpBtn" class="touch-btn touch-btn-round" aria-label="Jump" style="bottom:calc(140px + env(safe-area-inset-bottom)); right:40px; width:64px; height:64px; font-size:22px;">&#8593;</button>
+  <button id="shootBtn" class="touch-btn touch-btn-round" aria-label="Shoot">&#128293;</button>
 </div>
 
 <div id="overlay">
   <div class="panel">
-    <h1>Jumbie Run: City Chase</h1>
+    <h1>Jumbie Hunt</h1>
     <div class="sub" id="panelSub">a smoke-choked city hides Princess Pooza</div>
     <div class="divider"></div>
 
-    <!-- title / start screen -->
     <div id="startPanelBody">
-      <div class="princess-line">The jumbies took the city at dawn. Somewhere in these burning streets, <strong>Princess Pooza</strong> is waiting to be found.</div>
+      <div class="princess-line">The jumbies took the city at dawn. Clear <strong>10 of them</strong> to reveal where <strong>Princess Pooza</strong> is hiding.</div>
       <label class="name-label" for="nameInput">Your name</label>
       <input type="text" id="nameInput" maxlength="14" placeholder="Explorer" autocomplete="off">
-      <button id="startBtn">Begin the Run</button>
+      <button id="startBtn">Enter the City</button>
 
-      <div class="leaderboard" id="startLeaderboard">
-        <div class="leaderboard-title">Top Explorers</div>
-        <ol id="startLeaderboardList" class="leaderboard-list"></ol>
+      <div class="leaderboard">
+        <div class="leaderboard-title">Top Survivors (Global)</div>
+        <ol id="startLeaderboardList" class="leaderboard-list"><li class="leaderboard-empty">Connect multiplayer to see this</li></ol>
       </div>
     </div>
 
-    <!-- 3-2-1 countdown screen -->
     <div id="countdownPanelBody" style="display:none;">
-      <div class="countdown-message">Pooza is waiting for you, go run</div>
+      <div class="countdown-message">the jumbies are close, stay sharp</div>
       <div class="countdown-number" id="countdownNumber">3</div>
     </div>
 
-    <!-- pause screen -->
     <div id="pausePanelBody" style="display:none;">
       <div class="result-heading">Paused</div>
-      <div class="result-sub">Catch your breath in the streets.</div>
+      <div class="result-sub">The city waits.</div>
       <div class="btn-row">
         <button id="resumeBtn">Resume</button>
         <button id="pauseExitBtn" class="btn-secondary">Exit</button>
       </div>
-      <button id="pauseRestartBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Restart Run</button>
+      <button id="pauseRestartBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Restart</button>
     </div>
 
-    <!-- game over / victory screen -->
     <div id="endPanelBody" style="display:none;">
-      <div class="result-heading" id="endHeading">You Were Caught</div>
-      <div class="result-sub" id="endSub">The jumbies took the streets back...</div>
+      <div class="result-heading" id="endHeading">You Fell</div>
+      <div class="result-sub" id="endSub">The jumbies got too close...</div>
       <div class="stat-row">
-        <div class="stat"><div class="n" id="finalScore">0</div><div class="l">Score</div></div>
-        <div class="stat"><div class="n" id="finalLevel">1</div><div class="l">Level</div></div>
-        <div class="stat"><div class="n" id="finalCoins">0</div><div class="l">Relics</div></div>
+        <div class="stat"><div class="n" id="finalWave">1</div><div class="l">Wave</div></div>
+        <div class="stat"><div class="n" id="finalKills">0</div><div class="l">Kills</div></div>
       </div>
-      <div class="best-line" id="newRecordLine" style="display:none;">New personal best!</div>
-
       <div class="btn-row">
-        <button id="retryBtn">Play Again</button>
+        <button id="retryBtn">Try Again</button>
         <button id="exitBtn" class="btn-secondary">Exit</button>
       </div>
 
-      <div class="leaderboard" id="endLeaderboard">
-        <div class="leaderboard-title">Top Explorers</div>
+      <div class="leaderboard">
+        <div class="leaderboard-title">Top Survivors (Global)</div>
         <ol id="endLeaderboardList" class="leaderboard-list"></ol>
       </div>
     </div>
@@ -109,9 +100,15 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="game.js?v=5"></script>
+<script src="game.js?v=6"></script>
 
-<!-- kept minimal and separate from the main overlay so it still works even if something else broke -->
+<!-- multiplayer: safe to leave these in even before Firebase is configured —
+     multiplayer.js detects placeholder config and quietly runs single-player -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="firebase-config.js?v=1"></script>
+<script src="multiplayer.js?v=1"></script>
+
 <div id="fatalOverlay" class="fatal-overlay" style="display:none;">
   <div class="fatal-box">
     <p id="fatalMessage">Something interrupted the game.</p>
